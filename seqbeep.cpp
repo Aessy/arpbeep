@@ -3,6 +3,23 @@
 #include <iostream>
 #include <memory>
 
+
+struct Note
+{
+    int note;
+    int length; // 0 - 127
+};
+
+struct Sequence
+{
+    struct Sequence()
+    {}
+
+    std::vector<Note> seq_base;
+    int transpose = 0;
+    int veolocity = 50; // 0 - 127
+};
+
 int main()
 {
     snd_seq_t * handle;
@@ -18,6 +35,10 @@ int main()
             SND_SEQ_PORT_CAP_WRITE|SND_SEQ_PORT_CAP_SUBS_WRITE,
             SND_SEQ_PORT_TYPE_APPLICATION);
 
+    int out_port = snd_seq_create_simple_port(seq_handle.get(), "output",
+            SND_SEQ_PORT_CAP_READ|SND_SEQ_PORT_CAP_SUBS_READ,
+            SND_SEQ_PORT_TYPE_APPLICATION);
+
     while(1)
     {
         snd_seq_event_t *ev = nullptr;
@@ -31,6 +52,14 @@ int main()
                                                         ev->data.note.note,
                                                         ev->data.note.velocity);
         }
+
+        snd_seq_ev_set_source(ev, out_port);
+        snd_seq_ev_set_subs(ev);
+        snd_seq_ev_set_direct(ev);
+        snd_seq_event_output_direct(seq_handle.get(), ev);
+        snd_seq_free_event(ev);
+
+
     }
 
     return 0;
