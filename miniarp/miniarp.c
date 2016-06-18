@@ -91,7 +91,7 @@ void arpeggio() {
     snd_seq_ev_set_source(&ev, port_out_id);
     snd_seq_ev_set_subs(&ev);
     snd_seq_event_output_direct(seq_handle, &ev);
-    tick += (int)((double)sequence[0][l1] * (1.0 + dt));
+    tick += 50;
   }
   snd_seq_ev_clear(&ev);
   ev.type = SND_SEQ_EVENT_ECHO; 
@@ -111,11 +111,14 @@ void midi_action() {
         arpeggio(); 
         break;
       case SND_SEQ_EVENT_NOTEON:
-        clear_queue();
-        transpose = ev->data.note.note - 60;
-        tick = get_tick();
-        arpeggio();
-        break;        
+        {
+            clear_queue();
+            transpose = ev->data.note.note - 60;
+            snd_seq_tick_time_t ticks = get_tick();
+            tick = ticks + (ticks % tick);
+            arpeggio();
+            break;        
+        }
       case SND_SEQ_EVENT_CONTROLLER:
         if (ev->data.control.param == 1) {           
           bpm = (int)((double)bpm0 * (1.0 + (double)ev->data.control.value / 127.0));
