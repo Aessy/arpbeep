@@ -48,6 +48,7 @@ void run_sequencer(std::shared_ptr<MidiSequence> sequence)
 
 int main()
 {
+    /*
     std::vector<MidiEvent> sequence { {0, 32,  5},
                                       {20, 34, 5},
                                       {40, 31, 5 },
@@ -63,8 +64,9 @@ int main()
     seq->events = sequence;
 
     std::thread thread(run_sequencer, seq);
+    */
 
-    Sequencer fm(seq);
+    Sequencer fm;
     fm.show();
 
     nana::exec();

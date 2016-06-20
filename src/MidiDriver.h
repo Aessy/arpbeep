@@ -16,6 +16,7 @@ struct MidiDriver
 
     void send_echo_event(snd_seq_tick_time_t tick, int callback);
     void send_midi_event(MidiEvent const& event);
+    snd_seq_tick_time_t get_tick();
     snd_seq_event_t poll_event();
 
     void run();

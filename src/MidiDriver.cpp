@@ -5,11 +5,11 @@
 #include <memory>
 #include <vector>
 
-static snd_seq_tick_time_t get_tick(snd_seq_t * handle, int queue_id)
+snd_seq_tick_time_t MidiDriver::get_tick()
 {
     snd_seq_queue_status_t * status;
     snd_seq_queue_status_malloc(&status);
-    snd_seq_get_queue_status(handle, queue_id, status);
+    snd_seq_get_queue_status(seq_handle.get(), queue_id, status);
 
     return snd_seq_queue_status_get_tick_time(status);
 }
@@ -77,7 +77,7 @@ void MidiDriver::run()
 
         std::cout << "event.\n";
 
-        auto const tick = get_tick(seq_handle.get(), queue_id);
+        auto const tick = get_tick();
         if ( ev->type == SND_SEQ_EVENT_ECHO)
         {
             std::cout << ev->time.tick <<": Echo event\n";
