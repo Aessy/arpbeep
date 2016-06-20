@@ -83,7 +83,7 @@ SeqModifier::SeqModifier(nana::window window, std::shared_ptr<MidiDriver> driver
 
     place["btn"] << start_stop_button;
 
-    MidiEvent event { 0, 32, 5};
+    MidiEvent event { 0, 64, 50};
     for (size_t i = 0; i < events ; ++i)
     {
         std::cout << "Create row\n";
@@ -107,9 +107,12 @@ void SeqModifier::echo_event_received(snd_seq_event_t const& event)
     // Send midi event to output port.
     MidiEvent ev = rows[index]->event;
 
+    if (ev.note == -1)
+        return;
+
     // Transpose the note.
     ev.note += transpose;
-    midi_driver->send_midi_event(ev);
+    midi_driver->send_midi_event(ev, event.time.tick);
 
     // Clear last played note
     if (last_played >= 0)
@@ -144,13 +147,50 @@ SeqRow::SeqRow(nana::window window, size_t row_length, MidiEvent const& event)
 
         lbl->events().mouse_down([this](nana::arg_mouse const& event)
         {
-            auto new_selected = find_label(event.window_handle);
-            if (new_selected == selected)
-                return;
-            else
+            if (event.left_button)
             {
-                select(new_selected);
-                this->event.note = selected;
+                auto new_selected = find_label(event.window_handle);
+                if (new_selected == selected)
+                    return;
+                else
+                {
+                    select(new_selected);
+                    this->event.note = selected;
+                }
+            }
+            else if (event.right_button)
+            {
+                auto new_selected = find_label(event.window_handle);
+                if (new_selected == selected)
+                {
+                    select(-1);
+                    this->event.note = -1;
+                }
+            }
+        });
+        lbl->events().mouse_enter([this](nana::arg_mouse const& event)
+        {
+            std::cout << "Mouse enter: " << event.left_button << " | " << event.right_button << '\n';
+            if (event.left_button)
+            {
+                auto new_selected = find_label(event.window_handle);
+                if (new_selected == selected)
+                    return;
+                else
+                {
+                    select(new_selected);
+                    this->event.note = selected;
+                }
+            }
+            else if (event.right_button)
+            {
+                auto new_selected = find_label(event.window_handle);
+                if (new_selected == selected)
+                {
+                    select(-1);
+                    this->event.note = -1;
+                }
+
             }
         });
 
@@ -159,15 +199,16 @@ SeqRow::SeqRow(nana::window window, size_t row_length, MidiEvent const& event)
     select(event.note);
 }
 
-void SeqRow::select(size_t index)
+void SeqRow::select(int index)
 {
     std::cout << "SeqRow: selection " << index << '\n';
     if (index == selected)
         return;
-
-    row[index]->bgcolor(nana::colors::dark_blue);
-    if (selected > 0)
+    else if (selected >= 0)
         row[selected]->bgcolor(nana::colors::blue);
+    if (index != -1)
+        row[index]->bgcolor(nana::colors::dark_blue);
+
     selected = index;
 }
 

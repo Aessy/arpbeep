@@ -55,14 +55,14 @@ void MidiDriver::send_echo_event(snd_seq_tick_time_t tick, int callback)
     snd_seq_event_output_direct(seq_handle.get(), &ev);
 }
 
-void MidiDriver::send_midi_event(MidiEvent const& event)
+void MidiDriver::send_midi_event(MidiEvent const& event, snd_seq_tick_time_t tick)
 {
     std::cout << "Sending midi event.\n";
     snd_seq_event_t ev;
     snd_seq_ev_clear(&ev);
 
     ev.type = SND_SEQ_EVENT_NOTEON;
-    snd_seq_ev_set_note(&ev, 1, event.note, 127, event.length);
+    snd_seq_ev_set_note(&ev, 0, event.note, 127, tick + event.length);
     snd_seq_ev_set_source(&ev, out_port);
     snd_seq_ev_set_subs(&ev);
     snd_seq_event_output_direct(seq_handle.get(), &ev);

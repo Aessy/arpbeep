@@ -21,7 +21,7 @@ class SeqRow : public nana::panel<true>
 public:
     SeqRow(nana::window window, size_t row_length, MidiEvent const& event);
 
-    void select(size_t row);
+    void select(int row);
 
     void mark_played(int note);
     void clear_played();
@@ -68,9 +68,9 @@ private:
     std::shared_ptr<MidiDriver> midi_driver;
     std::vector<std::unique_ptr<SeqRow>> rows;
 
-    size_t const sequence_length = 200;
-    size_t const events = 10;
-    size_t const number_rows = 50;
+    size_t const sequence_length = 1400;
+    size_t const events = 50;
+    size_t const number_rows = 127;
 
     size_t transpose = 0;
 
