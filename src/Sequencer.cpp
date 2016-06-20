@@ -54,11 +54,12 @@ Sequencer::Sequencer()
 SeqModifier::SeqModifier(nana::window window, std::shared_ptr<MidiDriver> driver)
     : nana::panel<true> { window }
     , start_stop_button { *this, "start" }
+    , slider {*this, true }
     , place { *this }
     , midi_driver { driver }
     , state { MidiModState::NOT_RUNNING }
 {
-    place.div("<vertical <weight=5% header <vertical weight=40 margin=[3,3,3,3] btn>> <abc gap=1>>");
+    place.div("<vertical <weight=5% header <vertical weight=40 margin=[3,3,3,3] btn><slider>> <abc gap=1>>");
     bgcolor(nana::colors::black);
 
     start_stop_button.events().click([this](auto const& event)
@@ -81,7 +82,15 @@ SeqModifier::SeqModifier(nana::window window, std::shared_ptr<MidiDriver> driver
         }
     });
 
+    slider.value(100);
+    slider.vmax(200);
+    slider.events().click([this](auto const& event)
+    {
+        this->note_length = this->slider.value();
+    });
+
     place["btn"] << start_stop_button;
+    place["slider"] << slider;
 
     MidiEvent event { 0, 64, 50};
     for (size_t i = 0; i < events ; ++i)
@@ -106,6 +115,7 @@ void SeqModifier::echo_event_received(snd_seq_event_t const& event)
 
     // Send midi event to output port.
     MidiEvent ev = rows[index]->event;
+    ev.length = this->note_length;
 
     if (ev.note == -1)
         return;

@@ -7,6 +7,7 @@
 #include <nana/gui/widgets/label.hpp>
 #include <nana/gui/widgets/form.hpp>
 #include <nana/gui/widgets/panel.hpp>
+#include <nana/gui/widgets/slider.hpp>
 #include <nana/gui/wvl.hpp>
 
 #include "MidiSequence.h"
@@ -65,14 +66,17 @@ public:
 private:
     nana::place place;
     nana::button start_stop_button;
+    nana::slider slider;
     std::shared_ptr<MidiDriver> midi_driver;
     std::vector<std::unique_ptr<SeqRow>> rows;
 
-    size_t const sequence_length = 1400;
+    size_t const sequence_length = 700;
     size_t const events = 50;
     size_t const number_rows = 127;
 
     size_t transpose = 0;
+
+    int note_length = 100;
 
     int last_played = -1;
 
