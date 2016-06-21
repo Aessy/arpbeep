@@ -49,16 +49,20 @@ private:
 };
 
 
+enum class MidiModState
+{
+    RUNNING,
+    NOT_RUNNING
+};
+
 class SeqModifier : public nana::panel<true>
 {
 public:
-    enum class MidiModState
-    {
-        RUNNING,
-        NOT_RUNNING
-    };
 
     SeqModifier(nana::window window, std::shared_ptr<MidiDriver> midi_driver);
+
+    void start(snd_seq_tick_time_t tick);
+    void stop();
 
     void echo_event_received(snd_seq_event_t const& event);
     void midi_event_received(snd_seq_event_t const& event);
@@ -71,12 +75,14 @@ private:
     std::vector<std::unique_ptr<SeqRow>> rows;
 
     size_t const sequence_length = 700;
-    size_t const events = 50;
+    size_t const events = 10;
     size_t const number_rows = 127;
 
     size_t transpose = 0;
 
     int note_length = 100;
+
+    size_t run_nuber = 0;
 
     int last_played = -1;
 
@@ -92,11 +98,17 @@ public:
     void midi_event_listener();
 
 private:
+    void start_stop_clicked();
+
+private:
     nana::place place;
     std::shared_ptr<SeqModifier> seq_modifier;
+    nana::button start_stop_button;
 
     std::shared_ptr<MidiDriver> midi_driver;
     std::thread midi_event_thread;
+
+    MidiModState state;
 };
 
 #endif

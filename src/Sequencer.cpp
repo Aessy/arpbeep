@@ -39,57 +39,56 @@ void Sequencer::midi_event_listener()
 Sequencer::Sequencer()
     : place { *this }
     , midi_driver { std::make_shared<MidiDriver>() }
+    , start_stop_button { *this, "start" }
+    , state { MidiModState::NOT_RUNNING }
 {
-    place.div("<abc>");
+    place.div("<vertical <weight=5% <vertical weight=40 btn>> <sequencers>>");
 
     midi_event_thread = std::thread([this]{this->midi_event_listener();});
 
-    // Default sequencer, should be possible to have multiple tabbed or simiular.
+    // Default sequencer, should be possible to have multiple tabbed or similar.
     seq_modifier = std::make_shared<SeqModifier>(*this, midi_driver);
 
-    place["abc"] << *seq_modifier;
+    start_stop_button.events().click([this](auto const& event) { this->start_stop_clicked(); });
 
+    place["sequencers"] << *seq_modifier;
+    place["btn"] << start_stop_button;
+
+}
+
+void Sequencer::start_stop_clicked()
+{
+    if (state == MidiModState::NOT_RUNNING)
+    {
+        start_stop_button.caption("Stop");
+        state = MidiModState::RUNNING;
+        seq_modifier->start(midi_driver->get_tick());
+    }
+    else if (state == MidiModState::RUNNING)
+    {
+        start_stop_button.caption("Start");
+        state = MidiModState::NOT_RUNNING;
+        seq_modifier->stop();
+    }
 }
 
 SeqModifier::SeqModifier(nana::window window, std::shared_ptr<MidiDriver> driver)
     : nana::panel<true> { window }
-    , start_stop_button { *this, "start" }
-    , slider {*this, true }
+    , slider {*this, nana::rectangle(0,0,40,5),true }
     , place { *this }
     , midi_driver { driver }
     , state { MidiModState::NOT_RUNNING }
 {
-    place.div("<vertical <weight=5% header <vertical weight=40 margin=[3,3,3,3] btn><slider>> <abc gap=1>>");
+    place.div("<vertical  <abc gap=1> <weight=2% header <vertical weight=100 slider> > >");
     bgcolor(nana::colors::black);
 
-    start_stop_button.events().click([this](auto const& event)
-    {
-        if (state == MidiModState::NOT_RUNNING)
-        {
-            state = MidiModState::RUNNING;
-            this->start_stop_button.caption("stop");
-
-            auto tick = this->midi_driver->get_tick();
-            for (size_t i = 0; i < rows.size(); ++i)
-            {
-                midi_driver->send_echo_event(tick + this->rows[i]->event.tick, i);
-            }
-        }
-        else
-        {
-            this->state = MidiModState::NOT_RUNNING;
-            this->start_stop_button.caption("start");
-        }
-    });
-
     slider.value(100);
-    slider.vmax(200);
+    slider.vmax(sequence_length/events);
     slider.events().click([this](auto const& event)
     {
         this->note_length = this->slider.value();
     });
 
-    place["btn"] << start_stop_button;
     place["slider"] << slider;
 
     MidiEvent event { 0, 64, 50};
@@ -138,6 +137,20 @@ void SeqModifier::midi_event_received(snd_seq_event_t const& event)
     auto n = event.data.note.note;
     std::cout << "Received: " << int(n) << '\n';
     transpose = n-64;
+}
+
+void SeqModifier::start(snd_seq_tick_time_t tick)
+{
+    this->state = MidiModState::RUNNING;
+    for (size_t i = 0; i < rows.size(); ++i)
+    {
+        midi_driver->send_echo_event(tick + this->rows[i]->event.tick, i);
+    }
+}
+
+void SeqModifier::stop()
+{
+    this->state = MidiModState::NOT_RUNNING;
 }
 
 SeqRow::SeqRow(nana::window window, size_t row_length, MidiEvent const& event)
