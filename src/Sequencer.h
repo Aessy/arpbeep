@@ -79,12 +79,10 @@ private:
     size_t const number_rows = 127;
 
     size_t transpose = 0;
-
-    int note_length = 100;
-
-    size_t run_nuber = 0;
-
+    int note_length = sequence_length/events;
     int last_played = -1;
+
+    unsigned int session = 0;
 
     MidiModState state;
 };

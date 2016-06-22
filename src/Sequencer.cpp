@@ -104,13 +104,17 @@ SeqModifier::SeqModifier(nana::window window, std::shared_ptr<MidiDriver> driver
 
 void SeqModifier::echo_event_received(snd_seq_event_t const& event)
 {
-    if (this->state != MidiModState::RUNNING)
+    // XXX: Possible raise condition with start() and stop(). Need to have a lock here.
+    auto const event_session = event.data.raw32.d[1];
+
+    if (this->state != MidiModState::RUNNING ||
+        event_session != session)
         return;
 
     auto index = event.data.raw32.d[0];
     // Queue up new event.
     midi_driver->send_echo_event(event.time.tick + sequence_length,
-                                index);
+                                index, session);
 
     // Send midi event to output port.
     MidiEvent ev = rows[index]->event;
@@ -144,13 +148,14 @@ void SeqModifier::start(snd_seq_tick_time_t tick)
     this->state = MidiModState::RUNNING;
     for (size_t i = 0; i < rows.size(); ++i)
     {
-        midi_driver->send_echo_event(tick + this->rows[i]->event.tick, i);
+        midi_driver->send_echo_event(tick + this->rows[i]->event.tick, i, session);
     }
 }
 
 void SeqModifier::stop()
 {
     this->state = MidiModState::NOT_RUNNING;
+    ++session;
 }
 
 SeqRow::SeqRow(nana::window window, size_t row_length, MidiEvent const& event)

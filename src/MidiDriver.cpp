@@ -43,13 +43,14 @@ MidiDriver::MidiDriver()
     snd_seq_drain_output(seq_handle.get());
 }
 
-void MidiDriver::send_echo_event(snd_seq_tick_time_t tick, int callback)
+void MidiDriver::send_echo_event(snd_seq_tick_time_t tick, unsigned int column_id, unsigned int session_id)
 {
     std::cout << "Sending echo event.\n";
     snd_seq_event_t ev;
     snd_seq_ev_clear(&ev);
     ev.type = SND_SEQ_EVENT_ECHO;
-    ev.data.raw32.d[0] = callback;
+    ev.data.raw32.d[0] = column_id;
+    ev.data.raw32.d[1] = session_id;
     snd_seq_ev_set_dest(&ev, snd_seq_client_id(seq_handle.get()), in_port);
     snd_seq_ev_schedule_tick(&ev, queue_id, 0, tick);
     snd_seq_event_output_direct(seq_handle.get(), &ev);
