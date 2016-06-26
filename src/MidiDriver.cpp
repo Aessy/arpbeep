@@ -1,5 +1,7 @@
 #include "MidiDriver.h"
 
+#include "log.h"
+
 #include <alsa/asoundlib.h>
 #include <iostream>
 #include <memory>
@@ -45,7 +47,6 @@ MidiDriver::MidiDriver()
 
 void MidiDriver::send_echo_event(snd_seq_tick_time_t tick, unsigned int column_id, unsigned int session_id)
 {
-    std::cout << "Sending echo event.\n";
     snd_seq_event_t ev;
     snd_seq_ev_clear(&ev);
     ev.type = SND_SEQ_EVENT_ECHO;
@@ -58,7 +59,7 @@ void MidiDriver::send_echo_event(snd_seq_tick_time_t tick, unsigned int column_i
 
 void MidiDriver::send_midi_event(MidiEvent const& event, snd_seq_tick_time_t tick)
 {
-    std::cout << "Sending midi event.\n";
+    LOG("Tick:" << tick);
     snd_seq_event_t ev;
     snd_seq_ev_clear(&ev);
 
@@ -67,6 +68,17 @@ void MidiDriver::send_midi_event(MidiEvent const& event, snd_seq_tick_time_t tic
     snd_seq_ev_set_source(&ev, out_port);
     snd_seq_ev_set_subs(&ev);
     snd_seq_event_output_direct(seq_handle.get(), &ev);
+}
+
+void MidiDriver::setBpm(unsigned int bpm)
+{
+    LOG("Tempo change: " << bpm);
+    unsigned int tempo = (60 * 1000000 / bpm);
+
+    snd_seq_change_queue_tempo(seq_handle.get(), queue_id, tempo, nullptr);
+    snd_seq_drain_output(seq_handle.get());
+
+
 }
 
 void MidiDriver::run()

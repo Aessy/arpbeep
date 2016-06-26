@@ -74,13 +74,14 @@ private:
     std::shared_ptr<MidiDriver> midi_driver;
     std::vector<std::unique_ptr<SeqRow>> rows;
 
-    size_t const sequence_length = 700;
-    size_t const events = 10;
     size_t const number_rows = 127;
 
     size_t transpose = 0;
-    int note_length = sequence_length/events;
+    int note_length = 96;// sequence_length/events; Quarter note length
     int last_played = -1;
+
+    size_t const events = 30;
+    size_t const sequence_length = note_length * events;
 
     unsigned int session = 0;
 
@@ -102,6 +103,7 @@ private:
     nana::place place;
     std::shared_ptr<SeqModifier> seq_modifier;
     nana::button start_stop_button;
+    nana::textbox bpm;
 
     std::shared_ptr<MidiDriver> midi_driver;
     std::thread midi_event_thread;

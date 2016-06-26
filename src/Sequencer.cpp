@@ -1,5 +1,7 @@
 #include "Sequencer.h"
 
+#include "log.h"
+
 #include <iostream>
 
 void Sequencer::midi_event_listener()
@@ -12,7 +14,6 @@ void Sequencer::midi_event_listener()
         auto event = midi_driver->poll_event();
         if (event.type == SND_SEQ_EVENT_ECHO)
         {
-            std::cout << "Received echo event.\n";
 
             // 1. Send echo event to the correct SeqModifier
             // 2. Retrieve the midi event to output.
@@ -30,7 +31,6 @@ void Sequencer::midi_event_listener()
         }
         else if(event.type == SND_SEQ_EVENT_NOTEON)
         {
-            std::cout << "Received noteon event.\n";
             seq_modifier->midi_event_received(event);
         }
     }
@@ -40,9 +40,10 @@ Sequencer::Sequencer()
     : place { *this }
     , midi_driver { std::make_shared<MidiDriver>() }
     , start_stop_button { *this, "start" }
+    , bpm { *this, true }
     , state { MidiModState::NOT_RUNNING }
 {
-    place.div("<vertical <weight=5% <vertical weight=40 btn>> <sequencers>>");
+    place.div("<vertical <weight=5% <vertical weight=40 btn> <vertical weight=40 bpm>> <sequencers>>");
 
     midi_event_thread = std::thread([this]{this->midi_event_listener();});
 
@@ -50,9 +51,19 @@ Sequencer::Sequencer()
     seq_modifier = std::make_shared<SeqModifier>(*this, midi_driver);
 
     start_stop_button.events().click([this](auto const& event) { this->start_stop_clicked(); });
+    bpm.multi_lines(false);
+    bpm.events().key_press([this](auto const& event)
+    {
+        if (event.key == nana::keyboard::enter)
+        {
+            int tempo = this->bpm.to_int();
+            this->midi_driver->setBpm(tempo);
+        }
+    });
 
     place["sequencers"] << *seq_modifier;
     place["btn"] << start_stop_button;
+    place["bpm"] << bpm;
 
 }
 
@@ -94,7 +105,6 @@ SeqModifier::SeqModifier(nana::window window, std::shared_ptr<MidiDriver> driver
     MidiEvent event { 0, 64, 50};
     for (size_t i = 0; i < events ; ++i)
     {
-        std::cout << "Create row\n";
         event.tick = sequence_length / events * i;
         auto row = std::make_unique<SeqRow>(*this, number_rows, event);
         place["abc"] << *row;
@@ -139,7 +149,6 @@ void SeqModifier::echo_event_received(snd_seq_event_t const& event)
 void SeqModifier::midi_event_received(snd_seq_event_t const& event)
 {
     auto n = event.data.note.note;
-    std::cout << "Received: " << int(n) << '\n';
     transpose = n-64;
 }
 
@@ -198,7 +207,6 @@ SeqRow::SeqRow(nana::window window, size_t row_length, MidiEvent const& event)
         });
         lbl->events().mouse_enter([this](nana::arg_mouse const& event)
         {
-            std::cout << "Mouse enter: " << event.left_button << " | " << event.right_button << '\n';
             if (event.left_button)
             {
                 auto new_selected = find_label(event.window_handle);
@@ -229,7 +237,6 @@ SeqRow::SeqRow(nana::window window, size_t row_length, MidiEvent const& event)
 
 void SeqRow::select(int index)
 {
-    std::cout << "SeqRow: selection " << index << '\n';
     if (index == selected)
         return;
     else if (selected >= 0)

@@ -19,6 +19,8 @@ struct MidiDriver
     snd_seq_tick_time_t get_tick();
     snd_seq_event_t poll_event();
 
+    void setBpm(unsigned int bpm);
+
     void run();
 
 private:

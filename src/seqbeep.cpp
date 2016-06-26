@@ -3,6 +3,7 @@
 #include "MidiDriver.h"
 #include "Sequencer.h"
 #include "MidiSequence.h"
+#include "log.h"
 
 #include <nana/gui.hpp>
 #include <nana/gui/widgets/label.hpp>
@@ -16,6 +17,9 @@
 
 int main()
 {
+    initLog();
+    LOG("Starting seqbeep");
+
     Sequencer fm;
     fm.show();
 
