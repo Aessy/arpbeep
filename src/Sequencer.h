@@ -8,6 +8,8 @@
 #include <nana/gui/widgets/form.hpp>
 #include <nana/gui/widgets/panel.hpp>
 #include <nana/gui/widgets/slider.hpp>
+#include <nana/gui/widgets/tabbar.hpp>
+#include <nana/gui/widgets/combox.hpp>
 #include <nana/gui/wvl.hpp>
 
 #include "MidiSequence.h"
@@ -16,6 +18,52 @@
 #include <memory>
 #include <exception>
 #include <thread>
+
+/**
+ * Music theory
+ *
+ * Time signature:
+ *
+ * 4 : How many beats of the given note type per bar
+ * -
+ * 4 : The note value. 4 is a quarter note. 8 is a 1/8 note, etc...
+ *
+ * 4/4 means 4 quarter notes per bar.
+ *
+ * Fact1: *Time signature should be shared between all sequenceters running at the same time.*
+ * Fact2: *BMP should be shared betwee all sequencers.*
+ * Fact2: *Each sequencer shall be able to specifie how manny bars to loop over.*
+ * Fact3: *Each sequencer shall be able to specify the note value*
+ *
+ * Example:
+ * Base config 120BMP and 4/4 time signature.
+ *
+ * Exampl 2:
+ * One sequencer has bar count set to 2 and note type set to 1/4.
+ * There will be a total amount of 8 columns, where each column indicates a 1/4 note.
+ *
+ * Another sequencer has bar count to 2 and note type set to 1/8.
+ * There will be a total amount of 16 columns, where each coluym indicates a 1/8 note. 8 columns in each bar.
+ *
+ * 2/4 
+ *
+ */
+
+//
+// 2/3
+// 6 quarter notes
+
+struct TimeSignature
+{
+    float note_type = 1;
+    unsigned int beats_per_bar = 4;
+
+    unsigned int notesPerBar(float n = 1) const
+    {
+        auto one_beat = note_type / n;
+        return one_beat * beats_per_bar;
+    }
+};
 
 class SeqRow : public nana::panel<true>
 {
@@ -55,11 +103,18 @@ enum class MidiModState
     NOT_RUNNING
 };
 
+/**
+ * Represents a sequence.
+ *
+ * A sequence can be multiple bars.
+ *
+ */
 class SeqModifier : public nana::panel<true>
 {
 public:
 
-    SeqModifier(nana::window window, std::shared_ptr<MidiDriver> midi_driver);
+    SeqModifier(nana::window window, std::shared_ptr<MidiDriver> midi_driver,
+                TimeSignature const& time_signature, size_t bars);
 
     void start(snd_seq_tick_time_t tick);
     void stop();
@@ -73,17 +128,20 @@ private:
     nana::slider slider;
     std::shared_ptr<MidiDriver> midi_driver;
     std::vector<std::unique_ptr<SeqRow>> rows;
+    TimeSignature time_signature;
+    size_t bars;
+
+    float note_type = 0.25f;
 
     size_t const number_rows = 127;
 
     size_t transpose = 0;
-    int note_length = 96;// sequence_length/events; Quarter note length
+    int beat_length = 96;// sequence_length/events; Quarter note length
     int last_played = -1;
 
     size_t const events = 30;
-    size_t const sequence_length = note_length * events;
-
     unsigned int session = 0;
+    unsigned int note_length = 30;
 
     MidiModState state;
 };
@@ -104,6 +162,7 @@ private:
     std::shared_ptr<SeqModifier> seq_modifier;
     nana::button start_stop_button;
     nana::textbox bpm;
+    nana::combox time_signature;
 
     std::shared_ptr<MidiDriver> midi_driver;
     std::thread midi_event_thread;

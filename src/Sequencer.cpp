@@ -41,14 +41,15 @@ Sequencer::Sequencer()
     , midi_driver { std::make_shared<MidiDriver>() }
     , start_stop_button { *this, "start" }
     , bpm { *this, true }
+    , time_signature { *this, "Time signature", true }
     , state { MidiModState::NOT_RUNNING }
 {
-    place.div("<vertical <weight=5% <vertical weight=40 btn> <vertical weight=40 bpm>> <sequencers>>");
+    place.div("<vertical <weight=5% margin=[15,2,15,2] <vertical weight=40 btn> <vertical weight=40 bpm> <vertical weight=60 time_signatures>> <sequencers>>");
 
     midi_event_thread = std::thread([this]{this->midi_event_listener();});
 
     // Default sequencer, should be possible to have multiple tabbed or similar.
-    seq_modifier = std::make_shared<SeqModifier>(*this, midi_driver);
+    seq_modifier = std::make_shared<SeqModifier>(*this, midi_driver, TimeSignature{1,4},1);
 
     start_stop_button.events().click([this](auto const& event) { this->start_stop_clicked(); });
     bpm.multi_lines(false);
@@ -61,9 +62,16 @@ Sequencer::Sequencer()
         }
     });
 
+    time_signature.push_back("4/4");
+    time_signature.push_back("2/2");
+    time_signature.push_back("2/3");
+    time_signature.option(0);
+    time_signature.editable(false);
+
     place["sequencers"] << *seq_modifier;
     place["btn"] << start_stop_button;
     place["bpm"] << bpm;
+    place["time_signatures"] << time_signature;
 
 }
 
@@ -83,18 +91,21 @@ void Sequencer::start_stop_clicked()
     }
 }
 
-SeqModifier::SeqModifier(nana::window window, std::shared_ptr<MidiDriver> driver)
+SeqModifier::SeqModifier(nana::window window, std::shared_ptr<MidiDriver> driver,
+                         TimeSignature const& time_signature, size_t bars)
     : nana::panel<true> { window }
     , slider {*this, nana::rectangle(0,0,40,5),true }
     , place { *this }
     , midi_driver { driver }
+    , time_signature { time_signature }
+    , bars { bars }
     , state { MidiModState::NOT_RUNNING }
 {
     place.div("<vertical  <abc gap=1> <weight=2% header <vertical weight=100 slider> > >");
     bgcolor(nana::colors::black);
 
     slider.value(100);
-    slider.vmax(sequence_length/events);
+    // slider.vmax(sequence_length/events);
     slider.events().click([this](auto const& event)
     {
         this->note_length = this->slider.value();
@@ -102,10 +113,19 @@ SeqModifier::SeqModifier(nana::window window, std::shared_ptr<MidiDriver> driver
 
     place["slider"] << slider;
 
-    MidiEvent event { 0, 64, 50};
-    for (size_t i = 0; i < events ; ++i)
+    auto notes_per_bar = this->time_signature.notesPerBar(note_type);
+    LOG("Notes per bar" << notes_per_bar);
+    //auto notes_per_quarter_bar = time_signature.notesPerBar(NoteType::QUARTER_NOTE);
+    auto note_length = beat_length * note_type;
+
+    auto total_length = note_length * bars;
+
+
+    MidiEvent event { 0, 64, 50 };
+    for (size_t i = 0; i < notes_per_bar * bars; ++i)
     {
-        event.tick = sequence_length / events * i;
+        event.tick = i*note_length;
+        //event.tick = sequence_length / events * i;
         auto row = std::make_unique<SeqRow>(*this, number_rows, event);
         place["abc"] << *row;
         this->rows.push_back(std::move(row));
@@ -123,7 +143,9 @@ void SeqModifier::echo_event_received(snd_seq_event_t const& event)
 
     auto index = event.data.raw32.d[0];
     // Queue up new event.
-    midi_driver->send_echo_event(event.time.tick + sequence_length,
+    auto new_event = event.time.tick + (beat_length * time_signature.note_type * bars * time_signature.notesPerBar());
+    LOG("Quing up new event at " << new_event);
+    midi_driver->send_echo_event(new_event,
                                 index, session);
 
     // Send midi event to output port.
